@@ -1,0 +1,16 @@
+{
+  "name": "closey",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watchTest": "watchify test/index.js -o test/index.browser.js -d",
+    "watchExample": "watchify example/index.js -o example/index.browser.js -d"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "tape": "^4.5.1"
+  }
+}
