@@ -28,7 +28,7 @@ module.exports = function(maxBinSize, minResolution){
         var parentSize = parent.size,
             halfSize = parent.halfSize,
             right = index%2,
-            bottom = index>2;
+            bottom = index>=2;
 
         return createNode([
             parent.bounds[0] + (right ? halfSize : 0),
@@ -105,6 +105,19 @@ module.exports = function(maxBinSize, minResolution){
         insertInto(targetNode, position);
     }
 
+    function addSearchResult(item){
+        var box = this[0];
+
+        if(
+            item[0] >= box[0] &&
+            item[0] < box[2] &&
+            item[1] >= box[1] &&
+            item[1] < box[3]
+        ){
+            this[1].push(item);
+        }
+    }
+
     function searchNode(node){
         var box = this[0],
             results = this[1];
@@ -132,16 +145,7 @@ module.exports = function(maxBinSize, minResolution){
             return;
         }
 
-        node.items.forEach(function(item){
-            if(
-                item[0] >= box[0] &&
-                item[0] < box[2] &&
-                item[1] >= box[1] &&
-                item[1] < box[3]
-            ){
-                results.push(item);
-            }
-        });
+        node.items.forEach(addSearchResult, this);
     }
 
     function search(box){
@@ -152,32 +156,9 @@ module.exports = function(maxBinSize, minResolution){
         return results;
     }
 
-    function removeNode(node){
-        var position = this;
-
-        if(
-            position[0] >= node.bounds[2] ||
-            position[1] >= node.bounds[3] ||
-            position[0] < node.bounds[0] ||
-            position[1] < node.bounds[1]
-        ){
-            return;
-        }
-
-        if(node.quadrants){
-            return node.quadrants.forEach(removeNode, this);
-        }
-
-        var index;
-
-        while(index = node.items.indexOf(position), ~index){
-            node.items.splice(index, 1);
-        }
-    }
-
     function remove(position){
+        allItems.delete(position);
         update();
-        removeNode.call(position, root);
     }
 
     function update(){

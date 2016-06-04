@@ -3,10 +3,10 @@ var closey = require('../');
 var dooby = closey(10);
 
 for(var i = 0; i < 100; i++){
+    // dooby.add([parseInt(i / 10)*10, i%10*10]);
     dooby.add([parseInt(Math.random() * 100), parseInt(Math.random() * 100)]);
 }
-
-dooby.add([74, 50]);
+console.log(dooby.all())
 
 var searchRegion = [25,25,75,75],
     results = dooby.search(searchRegion);
