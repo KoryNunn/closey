@@ -122,7 +122,7 @@ module.exports = function(maxBinSize, minResolution){
         var box = this[0],
             results = this[1];
 
-        if(
+        if(!node ||
             node.bounds[0] > box[2] ||
             node.bounds[2] <= box[0] ||
             node.bounds[1] > box[3] ||
@@ -132,7 +132,10 @@ module.exports = function(maxBinSize, minResolution){
         }
 
         if(node.quadrants){
-            return node.quadrants.forEach(searchNode, this);
+            for(var i = 0; i < node.quadrants.length; i++){
+                searchNode.call(this, node.quadrants[i]);
+            }
+            return;
         }
 
         if(
@@ -145,7 +148,9 @@ module.exports = function(maxBinSize, minResolution){
             return;
         }
 
-        node.items.forEach(addSearchResult, this);
+        for(var i = 0; i < node.items.length; i++){
+            addSearchResult.call(this, node.items[i]);
+        }
     }
 
     function search(box){
