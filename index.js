@@ -1,15 +1,13 @@
-module.exports = function(maxBinSize, minResolution){
+module.exports = function(maxBinSize){
     maxBinSize = maxBinSize || 10;
-    minResolution = minResolution || 0.01;
-
-    function createNode(bounds, isMinResolution){
+    function createNode(bounds){
         var size = bounds[2] - bounds[0],
             node = {
                 bounds: bounds,
                 size: size,
                 halfSize: size / 2,
                 items: [],
-                maxItems: isMinResolution ? Infinity : maxBinSize
+                allItems: []
             };
 
         return node;
@@ -35,7 +33,7 @@ module.exports = function(maxBinSize, minResolution){
             parent.bounds[1] + (bottom ? halfSize : 0),
             parent.bounds[2] - (right ? 0 : halfSize),
             parent.bounds[3] - (bottom ? 0 : halfSize)
-        ], parentSize < minResolution);
+        ]);
     }
 
     function addParentNode(offset, childNode){
@@ -60,103 +58,125 @@ module.exports = function(maxBinSize, minResolution){
         return root;
     }
 
-    function insertIntoQuadrant(node, position){
-        if(!node.quadrants){
-            node.quadrants = [];
-        }
+    function insertInto(node, box){
+        var fits =
+            box[0] - box[2] < node.halfSize &&
+            box[1] - box[3] < node.halfSize,
+            horizCentre = node.bounds[0] + node.halfSize,
+            vertCentre = node.bounds[1] + node.halfSize,
+            left = box[2] < horizCentre,
+            right = box[0] > horizCentre,
+            horiz = left ^ right,
+            top = box[3] < vertCentre,
+            bottom = box[1] > vertCentre,
+            vert = top ^ bottom;
 
-        var index = (position[0] < node.bounds[0] + node.halfSize ? 0 : 1) +
-                (position[1] < node.bounds[1] + node.halfSize ? 0 : 2);
+        if(node.items.length > maxBinSize && fits && horiz && vert){
+            var index =
+                (left ? 0 : 1) +
+                (top ? 0 : 2);
 
-        insertInto(node.quadrants[index] || (node.quadrants[index] = addQuadrant(node, index)), position);
-    }
+            if(!node.quadrants){
+                node.quadrants = [];
+            }
 
-    function insertInto(node, position){
-        if(node.quadrants){
-            insertIntoQuadrant(node, position);
+
+            insertInto(
+                node.quadrants[index] || (
+                    node.quadrants[index] = addQuadrant(node, index)
+                ),
+                box
+            );
+            node.allItems.push(box);
+
             return;
         }
 
-        node.items.push(position);
-
-        if(
-            node.items.length > node.maxItems
-        ){
-            while(node.items.length){
-                insertIntoQuadrant(node, node.items.pop());
-            }
-        }
+        node.allItems.push(box);
+        node.items.push(box);
     }
 
-    function add(position){
-        allItems.add(position);
+    function add(box){
+        allItems.add(box);
 
         var targetNode = root;
 
-        var x = position[0] < targetNode.bounds[0] ? -1 : position[0] >= targetNode.bounds[2] ? 1 : 0;
-        var y = position[1] < targetNode.bounds[1] ? -1 : position[1] >= targetNode.bounds[3] ? 1 : 0;
+        var x = box[0] < targetNode.bounds[0] ? -1 : box[2] >= targetNode.bounds[2] ? 1 : 0;
+        var y = box[1] < targetNode.bounds[1] ? -1 : box[3] >= targetNode.bounds[3] ? 1 : 0;
 
         if(x || y){
             targetNode = addParentNode([x, y], targetNode);
-            add(position);
+            add(box);
             return;
         }
 
-        insertInto(targetNode, position);
+        insertInto(targetNode, box);
     }
 
     function addSearchResult(item){
         var box = this[0];
 
-        if(
-            item[0] >= box[0] &&
-            item[0] < box[2] &&
-            item[1] >= box[1] &&
-            item[1] < box[3]
+        if(!
+            (
+                item[0] > box[2] ||
+                item[2] < box[0] ||
+                item[1] > box[3] ||
+                item[3] < box[1]
+            )
         ){
             this[1].push(item);
         }
     }
 
-    function searchNode(node){
-        var box = this[0],
-            results = this[1];
-
-        if(!node ||
-            node.bounds[0] > box[2] ||
-            node.bounds[2] <= box[0] ||
-            node.bounds[1] > box[3] ||
-            node.bounds[3] <= box[1]
-        ){
-            return;
+    function checkPartial(addResult, searchNode, node) {
+        if(node.quadrants){
+            searchNode(node.quadrants[0]);
+            searchNode(node.quadrants[1]);
+            searchNode(node.quadrants[2]);
+            searchNode(node.quadrants[3]);
         }
 
-        if(node.quadrants){
-            for(var i = 0; i < node.quadrants.length; i++){
-                searchNode.call(this, node.quadrants[i]);
-            }
+        for(var i = 0; i < node.items.length; i+=1){
+            node.items[i] && addResult(node.items[i]);
+        }
+    }
+
+    function searchNode(node){
+        var searchBox = this[0],
+            results = this[1];
+
+        if(
+            !node ||
+            node.bounds[0] > searchBox[2] ||
+            node.bounds[2] <= searchBox[0] ||
+            node.bounds[1] > searchBox[3] ||
+            node.bounds[3] <= searchBox[1]
+        ){
             return;
         }
 
         if(
-            node.bounds[0] >= box[0] &&
-            node.bounds[2] < box[2] &&
-            node.bounds[1] >= box[1] &&
-            node.bounds[3] < box[3]
+            node.bounds[0] >= searchBox[0] &&
+            node.bounds[2] < searchBox[2] &&
+            node.bounds[1] >= searchBox[1] &&
+            node.bounds[3] < searchBox[3]
         ){
-            results.push.apply(results, node.items);
+            results.push.apply(results, node.allItems);
             return;
         }
 
-        for(var i = 0; i < node.items.length; i++){
-            addSearchResult.call(this, node.items[i]);
-        }
+        checkPartial(this[3], this[2], node);
     }
 
     function search(box){
         var results = [];
 
-        searchNode.call([box, results], root);
+        var context = [box, results],
+            currentSearch = searchNode.bind(context),
+            addResult = addSearchResult.bind(context);
+
+        context.push(currentSearch, addResult);
+        currentSearch(root);
 
         return results;
     }
@@ -181,7 +201,7 @@ module.exports = function(maxBinSize, minResolution){
             return root;
         },
         all: function(){
-            return Array.from(allItems);
+            return new Set(allItems);
         }
     };
 }
