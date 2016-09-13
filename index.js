@@ -197,6 +197,7 @@ module.exports = function(maxBinSize){
         remove: remove,
         update: update,
         search: search,
+        reset: reset,
         root: function(){
             return root;
         },
